@@ -1,4 +1,5 @@
 const express = require("express");
+
 const app = express();
 
 require("dotenv").config();
@@ -6,11 +7,11 @@ require("dotenv").config();
 app.use(express.json());
 
 const connectDB = require("./connectMongo");
+
 connectDB();
 
-const DeviceModel = require("./models/device.model"); // Cập nhật tên mô hình nếu cần
-const redis = require('./redis');
-
+const DeviceModel = require("./models/book.model");
+const redis = require('./redis')
 // API GET để lấy tất cả dữ liệu
 app.get('/data', async (req, res) => {
   try {
@@ -51,7 +52,6 @@ app.delete('/data', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
-
 
 const PORT = process.env.PORT;
 
