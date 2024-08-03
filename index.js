@@ -10,7 +10,7 @@ const connectDB = require("./connectMongo");
 
 connectDB();
 
-const BookModel = require("./models/book.model");
+const DeviceModel = require("./models/book.model");
 const redis = require('./redis')
 // API GET để lấy tất cả dữ liệu
 app.get('/data', async (req, res) => {
