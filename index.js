@@ -12,141 +12,44 @@ connectDB();
 
 const BookModel = require("./models/book.model");
 const redis = require('./redis')
-
-const deleteKeys = async (pattern) => {
-  const keys = await redis.keys(`${pattern}::*`)
-  console.log(keys)
-  if (keys.length > 0) {
-    redis.del(keys)
-  }
-}
-
-app.get("/api/v1/books", async (req, res) => {
-  const { limit = 5, orderBy = "name", sortBy = "asc", keyword } = req.query;
-  let page = +req.query?.page;
-
-  if (!page || page <= 0) page = 1;
-
-  const skip = (page - 1) * + limit;
-
-  const query = {};
-
-  if (keyword) query.name = { $regex: keyword, $options: "i" };
-
-  const key = `Book::${JSON.stringify({query, page, limit, orderBy, sortBy})}`
-  let response = null
+// API GET để lấy tất cả dữ liệu
+app.get('/data', async (req, res) => {
   try {
-    const cache = await redis.get(key)
-    if (cache) {
-      response = JSON.parse(cache)
+    const devices = await DeviceModel.find();
+    res.status(200).json(devices);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// API POST để thêm dữ liệu
+app.post('/data', async (req, res) => {
+  try {
+    const { name, ip, country } = req.body;
+    if (typeof name === 'string' && typeof ip === 'string' && typeof country === 'string') {
+      const newDevice = new DeviceModel({ name, ip, country });
+      await newDevice.save();
+      res.status(201).json({ message: 'Data added successfully.' });
     } else {
-      const data = await BookModel.find(query)
-      .skip(skip)
-      .limit(limit)
-      .sort({ [orderBy]: sortBy });
-      const totalItems = await BookModel.countDocuments(query);
-
-      response = {
-        msg: "Ok",
-        data,
-        totalItems,
-        totalPages: Math.ceil(totalItems / limit),
-        limit: +limit,
-        currentPage: page,
-      }
-
-      redis.setex(key, 600, JSON.stringify(response))
+      res.status(400).json({ message: 'Name, IP, and country must be strings.' });
     }
-    
-    return res.status(200).json(response);
   } catch (error) {
-    return res.status(500).json({
-      msg: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 });
 
-app.get("/api/v1/books/:id", async (req, res) => {
+// API DELETE để xóa dữ liệu
+app.delete('/data', async (req, res) => {
   try {
-    const data = await BookModel.findById(req.params.id);
-
-    if (data) {
-      return res.status(200).json({
-        msg: "Ok",
-        data,
-      });
+    const { name } = req.body; // Xóa theo tên thiết bị, có thể thay đổi nếu cần
+    const result = await DeviceModel.deleteOne({ name });
+    if (result.deletedCount > 0) {
+      res.json({ message: 'Data deleted successfully.' });
+    } else {
+      res.status(404).json({ message: 'Data not found.' });
     }
-
-    return res.status(404).json({
-      msg: "Not Found",
-    });
   } catch (error) {
-    return res.status(500).json({
-      msg: error.message,
-    });
-  }
-});
-
-app.post("/api/v1/books", async (req, res) => {
-  try {
-    const { name, author, price, description } = req.body;
-    const book = new BookModel({
-      name,
-      author,
-      price,
-      description,
-    });
-    const data = await book.save();
-    deleteKeys('Book')
-    return res.status(200).json({
-      msg: "Ok",
-      data,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      msg: error.message,
-    });
-  }
-});
-
-app.put("/api/v1/books/:id", async (req, res) => {
-  try {
-    const { name, author, price, description } = req.body;
-    const { id } = req.params;
-
-    const data = await BookModel.findByIdAndUpdate(
-      id,
-      {
-        name,
-        author,
-        price,
-        description,
-      },
-      { new: true }
-    );
-    deleteKeys('Book')
-    return res.status(200).json({
-      msg: "Ok",
-      data,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      msg: error.message,
-    });
-  }
-});
-
-app.delete("/api/v1/books/:id", async (req, res) => {
-  try {
-    await BookModel.findByIdAndDelete(req.params.id);
-    deleteKeys('Book')
-    return res.status(200).json({
-      msg: "Ok",
-    });
-  } catch (error) {
-    return res.status(500).json({
-      msg: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 });
 
